@@ -46,7 +46,6 @@ private:
     std::string gpuLoadPath;
     std::string npuLoadPath;
     std::string fanLoadPath;
-    int maxFan;
 
     // Member functions
     int getNumberOfCores();
@@ -83,7 +82,6 @@ SystemMonitor::SystemMonitor() {
     npuLoadPath = "";
     gpuLoadPath = "";
     fanLoadPath = "";
-    maxFan = 0;
 
     findNPULoadPath();
     findGPULoadPath();
@@ -312,9 +310,8 @@ void SystemMonitor::readFanSpeed() {
         int pwm = 0;
         file >> pwm;
         file.close();
-        if (maxFan > 0) {
-            fanSpeedPercent = (100 * pwm) / maxFan;
-        }
+        // Calculate the fan speed percentage
+        fanSpeedPercent = ((pwm + 1) / 256.0) * 100.0;
     }
 }
 
@@ -347,34 +344,22 @@ void SystemMonitor::findGPULoadPath() {
 }
 
 void SystemMonitor::findPwmFanDevice() {
-    DIR* dir = opendir("/sys/class/thermal/");
+    const std::string basePath = "/sys/devices/platform/pwm-fan/";
+    DIR* dir = opendir((basePath + "hwmon/").c_str());
     if (dir) {
         struct dirent* ent;
         while ((ent = readdir(dir)) != nullptr) {
-            if (strncmp(ent->d_name, "cooling_device", 14) == 0) {
-                std::string typePath = std::string("/sys/class/thermal/") + ent->d_name + "/type";
-                std::ifstream file(typePath);
-                if (file.is_open()) {
-                    std::string type;
-                    getline(file, type);
-                    file.close();
-                    if (type.find("pwm-fan") != std::string::npos) {
-                        // Get max fan speed
-                        std::string maxStatePath = std::string("/sys/class/thermal/") + ent->d_name + "/max_state";
-                        std::ifstream maxFile(maxStatePath);
-                        if (maxFile.is_open()) {
-                            maxFile >> maxFan;
-                            maxFile.close();
-                        }
-                        // Set current fan path
-                        fanLoadPath = std::string("/sys/class/thermal/") + ent->d_name + "/cur_state";
-                        break;
-                    }
+            if (strncmp(ent->d_name, "hwmon", 5) == 0) {
+                std::string hwmonPath = basePath + "hwmon/" + ent->d_name;
+                std::string pwmPath = hwmonPath + "/pwm1";
+                std::ifstream file(pwmPath);
+                if (file.good()) {
+                    fanLoadPath = pwmPath;
+                    break;
                 }
             }
         }
         closedir(dir);
-    }
 }
 
 void SystemMonitor::update() {
@@ -470,11 +455,11 @@ void SystemMonitor::display() {
     row++;
 
     // Display Fan speed
-    if (maxFan > 0) {
+    if (!fanLoadPath.empty()) {
         std::ostringstream oss;
         oss << "Fan Speed:";
         drawProgressBar(row++, 0, 70, fanSpeedPercent, oss.str());
-	row++;
+        row++; // Add a blank line after Fan speed
     }
 
     mvprintw(row++, 0, "Press 'q' to quit.");
