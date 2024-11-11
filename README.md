@@ -36,6 +36,7 @@ Save the system_monitor.cpp file to your local machine.
 Compile Using g++
 
 Open a terminal and navigate to the directory containing system_monitor.cpp. Compile the program with the following command:
+
 `g++ -o system_monitor system_monitor.cpp -lncurses -std=c++11`
 
 
