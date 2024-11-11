@@ -360,6 +360,7 @@ void SystemMonitor::findPwmFanDevice() {
             }
         }
         closedir(dir);
+    }
 }
 
 void SystemMonitor::update() {
