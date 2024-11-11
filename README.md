@@ -47,6 +47,7 @@ Execute the compiled binary:
 `./system_monitor`
 
 To get NPU and RGA statistics:
+
 `sudo ./system_monitor`
 
 The application will start displaying system statistics in real-time.
